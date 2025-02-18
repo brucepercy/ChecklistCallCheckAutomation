@@ -1,0 +1,50 @@
+import pandas as pd
+from google.colab import drive
+
+drive.mount('/content/drive')
+
+# Define file paths (Replace these with actual paths when using locally)
+CALL_LOG_FILE = 'path/to/CallLog.csv'
+CHECKLIST_FILE = 'path/to/Checklist.xlsx'
+UPDATED_CHECKLIST_FILE = 'path/to/Updated_Checklist.xlsx'
+FORMATTED_CALL_LOG_FILE = 'path/to/Formatted_CallLog.csv'
+
+# Load call log CSV file
+df = pd.read_csv(CALL_LOG_FILE)
+
+# Function to format phone numbers
+def format_phone_number(phone):
+    phone = ''.join(filter(str.isdigit, str(phone)))  # Keep only digits
+    return f"{phone[:3]}-{phone[3:6]}-{phone[6:]}" if len(phone) == 10 else phone
+
+# Apply formatting to phone numbers
+df['Phone Number'] = df['Phone Number'].apply(format_phone_number)
+df.to_csv(FORMATTED_CALL_LOG_FILE, index=False)
+
+# Load checklist Excel file
+checklist_df = pd.read_excel(CHECKLIST_FILE)
+call_log_df = pd.read_csv(FORMATTED_CALL_LOG_FILE)
+
+# Ensure phone numbers are strings
+checklist_df['Customer Phone'] = checklist_df['Customer Phone'].astype(str)
+call_log_df['Phone Number'] = call_log_df['Phone Number'].astype(str)
+
+# Add new columns to checklist
+df['Chklst found'] = 'No'
+df['Call Duration'] = ''
+
+# Update checklist based on call log
+def update_checklist():
+    for index, row in checklist_df.iterrows():
+        customer_phone = row['Customer Phone']
+        match = call_log_df[call_log_df['Phone Number'] == customer_phone]
+        
+        if not match.empty:
+            checklist_df.at[index, 'Chklst found'] = 'Yes'
+            checklist_df.at[index, 'Call Duration'] = match.iloc[0]['Duration']  # Assuming 'Duration' column exists
+
+update_checklist()
+
+# Save updated checklist
+checklist_df.to_excel(UPDATED_CHECKLIST_FILE, index=False)
+print("Checklist has been updated and saved.")
